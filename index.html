@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Saper</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+      color: #e94560;
+    }
+
+    /* --- PANEL GÓRNY --- */
+    #top-bar {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat-box {
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 10px;
+      padding: 6px 14px;
+      text-align: center;
+      min-width: 80px;
+    }
+
+    .stat-box span {
+      display: block;
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #e94560;
+    }
+
+    .stat-box label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #aaa;
+    }
+
+    /* --- PRZYCISKI TRUDNOŚCI --- */
+    #difficulty {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    #difficulty button {
+      padding: 6px 14px;
+      border: 2px solid #0f3460;
+      background: #16213e;
+      color: #eee;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    #difficulty button.active,
+    #difficulty button:hover {
+      background: #e94560;
+      border-color: #e94560;
+      color: #fff;
+    }
+
+    /* --- PLANSZA --- */
+    #board-wrapper {
+      overflow: auto;
+      max-width: 100%;
+    }
+
+    #board {
+      display: grid;
+      gap: 3px;
+      margin: 0 auto;
+    }
+
+    .cell {
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      transition: transform 0.1s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .cell:active { transform: scale(0.92); }
+
+    .cell.hidden {
+      background: #0f3460;
+      color: transparent;
+    }
+
+    .cell.hidden:hover { background: #1a4a80; }
+
+    .cell.flagged {
+      background: #0f3460;
+      color: #f5a623;
+      font-size: 1.2rem;
+    }
+
+    .cell.revealed {
+      background: #16213e;
+      cursor: default;
+      border: 1px solid #0f3460;
+    }
+
+    .cell.mine-hit {
+      background: #e94560;
+      color: #fff;
+      font-size: 1.2rem;
+    }
+
+    .cell.mine-shown {
+      background: #2a1a2e;
+      color: #e94560;
+      font-size: 1.1rem;
+    }
+
+    /* Kolory cyfr */
+    .n1 { color: #4fc3f7; }
+    .n2 { color: #81c784; }
+    .n3 { color: #e57373; }
+    .n4 { color: #7986cb; }
+    .n5 { color: #ff8a65; }
+    .n6 { color: #4dd0e1; }
+    .n7 { color: #f06292; }
+    .n8 { color: #aaa; }
+
+    /* --- TRYB FLAGOWANIA (mobile) --- */
+    #flag-toggle {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #flag-toggle button {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: 2px solid #0f3460;
+      background: #16213e;
+      color: #eee;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #flag-toggle button.flag-active {
+      background: #f5a623;
+      border-color: #f5a623;
+      color: #111;
+      font-weight: bold;
+    }
+
+    /* --- MODAL KOŃCA GRY --- */
+    #overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 10;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #overlay.show { display: flex; }
+
+    #modal {
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 16px;
+      padding: 32px 28px;
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+      animation: popIn 0.3s ease;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    #modal h2 { font-size: 2rem; margin-bottom: 8px; }
+    #modal p  { color: #aaa; margin-bottom: 6px; font-size: 0.95rem; }
+
+    .modal-stats {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin: 16px 0;
+    }
+
+    .modal-stat span {
+      display: block;
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+
+    .modal-stat label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #aaa;
+    }
+
+    #modal button {
+      margin-top: 16px;
+      padding: 10px 28px;
+      border-radius: 10px;
+      border: none;
+      background: #e94560;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: opacity 0.2s;
+    }
+
+    #modal button:hover { opacity: 0.85; }
+
+    @media (max-width: 420px) {
+      .cell { width: 32px; height: 32px; font-size: 0.85rem; }
+      h1 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>💣 SAPER</h1>
+
+<div id="difficulty">
+  <button data-level="easy" class="active">Łatwy</button>
+  <button data-level="medium">Średni</button>
+  <button data-level="hard">Trudny</button>
+</div>
+
+<div id="top-bar">
+  <div class="stat-box">
+    <span id="mines-left">0</span>
+    <label>Miny</label>
+  </div>
+  <div class="stat-box">
+    <span id="timer">0</span>
+    <label>Sekundy</label>
+  </div>
+  <div class="stat-box">
+    <span id="found-count">0</span>
+    <label>Odkryte</label>
+  </div>
+</div>
+
+<div id="flag-toggle">
+  <button id="flag-btn" onclick="toggleFlagMode()">🚩 Tryb flagi: WYŁ</button>
+</div>
+
+<div id="board-wrapper">
+  <div id="board"></div>
+</div>
+
+<!-- MODAL -->
+<div id="overlay">
+  <div id="modal">
+    <h2 id="modal-title"></h2>
+    <p id="modal-subtitle"></p>
+    <div class="modal-stats">
+      <div class="modal-stat">
+        <span id="modal-found"></span>
+        <label>Znalezione</label>
+      </div>
+      <div class="modal-stat">
+        <span id="modal-remaining"></span>
+        <label>Pozostałe</label>
+      </div>
+      <div class="modal-stat">
+        <span id="modal-time"></span>
+        <label>Czas (s)</label>
+      </div>
+    </div>
+    <button onclick="restartGame()">🔄 Zagraj ponownie</button>
+  </div>
+</div>
+
+<script>
+  // ── KONFIGURACJA POZIOMÓW ──────────────────────────────────────────────────
+  const LEVELS = {
+    easy:   { rows: 9,  cols: 9,  mines: 10 },
+    medium: { rows: 14, cols: 14, mines: 30 },
+    hard:   { rows: 16, cols: 16, mines: 50 },
+  };
+
+  // ── STAN GRY ───────────────────────────────────────────────────────────────
+  let level       = 'easy';
+  let board       = [];
+  let revealed    = [];
+  let flagged     = [];
+  let gameOver    = false;
+  let firstClick  = true;
+  let timerInt    = null;
+  let seconds     = 0;
+  let flagMode    = false;
+  let minesFound  = 0;   // miny "odkryte" (wejście na pole z miną) — licznik chwyconych
+
+  // ── INIT ───────────────────────────────────────────────────────────────────
+  function initGame() {
+    const { rows, cols, mines } = LEVELS[level];
+    gameOver   = false;
+    firstClick = true;
+    minesFound = 0;
+    seconds    = 0;
+    flagMode   = false;
+
+    document.getElementById('flag-btn').textContent = '🚩 Tryb flagi: WYŁ';
+    document.getElementById('flag-btn').classList.remove('flag-active');
+    document.getElementById('timer').textContent     = '0';
+    document.getElementById('found-count').textContent = '0';
+    document.getElementById('mines-left').textContent  = mines;
+
+    clearInterval(timerInt);
+
+    // Zeruj macierze
+    board    = Array.from({ length: rows }, () => Array(cols).fill(0));
+    revealed = Array.from({ length: rows }, () => Array(cols).fill(false));
+    flagged  = Array.from({ length: rows }, () => Array(cols).fill(false));
+
+    renderBoard();
+  }
+
+  // ── GENERUJ MINY (po pierwszym kliknięciu) ─────────────────────────────────
+  function placeMines(safeR, safeC) {
+    const { rows, cols, mines } = LEVELS[level];
+    let placed = 0;
+
+    while (placed < mines) {
+      const r = Math.floor(Math.random() * rows);
+      const c = Math.floor(Math.random() * cols);
+
+      // Nie kładź miny na polu pierwszego kliknięcia ani sąsiednich
+      if (Math.abs(r - safeR) <= 1 && Math.abs(c - safeC) <= 1) continue;
+      if (board[r][c] === -1) continue;
+
+      board[r][c] = -1;
+      placed++;
+    }
+
+    // Policz sąsiednie miny
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (board[r][c] === -1) continue;
+        board[r][c] = countAdjacentMines(r, c);
+      }
+    }
+  }
+
+  function countAdjacentMines(r, c) {
+    const { rows, cols } = LEVELS[level];
+    let count = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc] === -1)
+          count++;
+      }
+    }
+    return count;
+  }
+
+  // ── RENDER ─────────────────────────────────────────────────────────────────
+  function renderBoard() {
+    const { rows, cols } = LEVELS[level];
+    const boardEl = document.getElementById('board');
+    boardEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    boardEl.innerHTML = '';
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell hidden';
+        cell.dataset.r = r;
+        cell.dataset.c = c;
+
+        // Kliknięcie lewym / dotknięcie
+        cell.addEventListener('click', () => handleClick(r, c));
+
+        // Długie przyciśnięcie → flaga (mobile)
+        let pressTimer;
+        cell.addEventListener('touchstart', (e) => {
+          pressTimer = setTimeout(() => {
+            e.preventDefault();
+            handleFlag(r, c);
+          }, 500);
+        }, { passive: true });
+        cell.addEventListener('touchend',  () => clearTimeout(pressTimer));
+        cell.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+        // PPM → flaga (desktop)
+        cell.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          handleFlag(r, c);
+        });
+
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  function updateCell(r, c) {
+    const { rows, cols } = LEVELS[level];
+    const boardEl = document.getElementById('board');
+    const index   = r * cols + c;
+    const cell    = boardEl.children[index];
+    if (!cell) return;
+
+    if (revealed[r][c]) {
+      cell.className = 'cell revealed';
+      const val = board[r][c];
+      if (val === -1) {
+        cell.className = 'cell mine-shown';
+        cell.textContent = '💣';
+      } else if (val > 0) {
+        cell.textContent = val;
+        cell.classList.add(`n${val}`);
+      } else {
+        cell.textContent = '';
+      }
+    } else if (flagged[r][c]) {
+      cell.className = 'cell flagged';
+      cell.textContent = '🚩';
+    } else {
+      cell.className = 'cell hidden';
+      cell.textContent = '';
+    }
+  }
+
+  // ── OBSŁUGA KLIKNIĘĆ ───────────────────────────────────────────────────────
+  function handleClick(r, c) {
+    if (gameOver || revealed[r][c]) return;
+
+    if (flagMode) { handleFlag(r, c); return; }
+    if (flagged[r][c]) return;
+
+    if (firstClick) {
+      firstClick = false;
+      placeMines(r, c);
+      startTimer();
+    }
+
+    if (board[r][c] === -1) {
+      // PRZEGRANA
+      triggerLoss(r, c);
+      return;
+    }
+
+    revealCell(r, c);
+    checkWin();
+  }
+
+  function handleFlag(r, c) {
+    if (gameOver || revealed[r][c]) return;
+    const { mines } = LEVELS[level];
+
+    flagged[r][c] = !flagged[r][c];
+
+    const flagCount = flagged.flat().filter(Boolean).length;
+    document.getElementById('mines-left').textContent = mines - flagCount;
+
+    updateCell(r, c);
+  }
+
+  // ── ODKRYWANIE KOMÓREK (flood-fill) ────────────────────────────────────────
+  function revealCell(r, c) {
+    const { rows, cols } = LEVELS[level];
+    if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+    if (revealed[r][c] || flagged[r][c]) return;
+
+    revealed[r][c] = true;
+    updateCell(r, c);
+
+    if (board[r][c] === 0) {
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++)
+          revealCell(r + dr, c + dc);
+    }
+  }
+
+  // ── KONIEC GRY ─────────────────────────────────────────────────────────────
+  function triggerLoss(hitR, hitC) {
+    gameOver = true;
+    clearInterval(timerInt);
+
+    const { rows, cols, mines } = LEVELS[level];
+    const boardEl = document.getElementById('board');
+
+    // Pokaż trafione pole
+    const hitIndex = hitR * cols + hitC;
+    boardEl.children[hitIndex].className = 'cell mine-hit';
+    boardEl.children[hitIndex].textContent = '💥';
+
+    // Odkryj wszystkie miny
+    let revealed_mines = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (board[r][c] === -1 && !(r === hitR && c === hitC)) {
+          revealed[r][c] = true;
+          updateCell(r, c);
+          revealed_mines++;
+        }
+      }
+    }
+
+    // Ile min odkrył (flagami + bezpiecznie odsłonięte sąsiednie)
+    const foundByFlags = flagged.flat().filter((f, i) => {
+      const rr = Math.floor(i / cols);
+      const cc = i % cols;
+      return f && board[rr][cc] === -1;
+    }).length;
+
+    showModal(false, foundByFlags, mines - foundByFlags - 1);
+  }
+
+  function checkWin() {
+    const { rows, cols, mines } = LEVELS[level];
+    let unrevealed = 0;
+
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        if (!revealed[r][c]) unrevealed++;
+
+    if (unrevealed === mines) {
+      gameOver = true;
+      clearInterval(timerInt);
+      showModal(true, mines, 0);
+    }
+  }
+
+  // ── TIMER ──────────────────────────────────────────────────────────────────
+  function startTimer() {
+    timerInt = setInterval(() => {
+      seconds++;
+      document.getElementById('timer').textContent = seconds;
+    }, 1000);
+  }
+
+  // ── MODAL ──────────────────────────────────────────────────────────────────
+  function showModal(win, found, remaining) {
+    document.getElementById('modal-title').textContent    = win ? '🎉 Wygrałeś!' : '💥 Przegrana!';
+    document.getElementById('modal-subtitle').textContent = win
+      ? 'Wszystkie miny odnalezione!'
+      : 'Nadepnąłeś na minę!';
+    document.getElementById('modal-found').textContent     = found;
+    document.getElementById('modal-remaining').textContent = remaining;
+    document.getElementById('modal-time').textContent      = seconds;
+    document.getElementById('overlay').classList.add('show');
+  }
+
+  // ── RESTART ────────────────────────────────────────────────────────────────
+  function restartGame() {
+    document.getElementById('overlay').classList.remove('show');
+    initGame();
+  }
+
+  // ── TRYB FLAGI (przycisk) ──────────────────────────────────────────────────
+  function toggleFlagMode() {
+    flagMode = !flagMode;
+    const btn = document.getElementById('flag-btn');
+    btn.textContent = flagMode ? '🚩 Tryb flagi: WŁ' : '🚩 Tryb flagi: WYŁ';
+    btn.classList.toggle('flag-active', flagMode);
+  }
+
+  // ── WYBÓR POZIOMU ──────────────────────────────────────────────────────────
+  document.querySelectorAll('#difficulty button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#difficulty button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      level = btn.dataset.level;
+      initGame();
+    });
+  });
+
+  // ── START ──────────────────────────────────────────────────────────────────
+  initGame();
+</script>
+</body>
+</html>
