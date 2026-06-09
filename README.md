@@ -25,4 +25,4 @@ Otwórz `index.html` w przeglądarce — gotowe.
 
 1. Wrzuć repo na GitHub
 2. Settings → Pages → Branch: `main`, folder: `/ (root)`
-3. Gotowe pod `https://<twój-nick>.github.io/<nazwa-repo>`
+3. Gotowe pod `https://<twój-nick>.github.io/<nazwa-repo>`.
